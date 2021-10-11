@@ -1,0 +1,207 @@
+image: docker:19.03.12
+
+stages:
+    - build
+    - test
+    - test_coverage
+    - docker_image
+    - deploy_dev
+    - deploy_staging
+    - tag
+    - deploy_production
+
+services:
+    - docker:19.03.12-dind
+
+variables:
+    POSTGRES_DB: service_test
+    POSTGRES_USER: user
+    POSTGRES_PASSWORD: password
+    POSTGRES_HOST_AUTH_METHOD: trust
+
+    NODE_ENV: testing
+
+    PORT: 8082
+
+    MICROSERVICE_NAME: service
+    MICROSERVICE_MAIN_QUEUE: service-queue-test
+    MICROSERVICE_GAME_QUEUE: service-queue-test
+    MICROSERVICE_USER_QUEUE: service-queue-test
+    MICROSERVICE_PLAYGROUND_QUEUE: service-queue-test
+
+    RMQ_PROTOCOL: amqp
+    RMQ_HOST: rabbitmq
+    RMQ_PORT: 5672
+
+    TYPEORM_CONNECTION: postgres
+    TYPEORM_HOST: service-db
+    TYPEORM_PORT: 5432
+    TYPEORM_USERNAME: user
+    TYPEORM_PASSWORD: password
+    TYPEORM_DATABASE: service_test
+    TYPEORM_ENTITIES: src/**/*.entity.ts
+    TYPEORM_SEEDING_FACTORIES: src/**/*.factory.ts
+    TYPEORM_SEEDING_SEEDS: src/**/*.seeder.ts
+    TYPEORM_MIGRATIONS: src/Migrations/*.ts
+    TYPEORM_MIGRATIONS_DIR: src/Migrations
+    TYPEORM_SYNCHRONIZE: 'true'
+
+    AUTH_DATABASE_URL: $AUTH_DATABASE_URL
+    FIREBASE_CREDENTIALS_PATH: $FIREBASE_CREDENTIALS_PATH
+    GOOGLE_API_KEY: $GOOGLE_API_KEY
+
+    TABLE_TENNIS_PLAYGROUNDS_PATH: $TABLE_TENNIS_PLAYGROUNDS_PATH
+
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_TLS_CERTDIR: ''
+    DOCKER_DRIVER: overlay
+
+    IMAGE: $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA
+    RELEASE_IMAGE: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_NAME
+
+before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+
+build:
+    stage: build
+    script:
+        - docker build --pull -t $IMAGE .
+        - docker push $IMAGE
+    only:
+        - branches
+# format_check:
+#     stage: test
+#     script:
+#         - docker pull $IMAGE
+#         - docker run $IMAGE npm run format:check
+#     except:
+#         - /^release.*$/
+#         - tags
+unit_test:
+    stage: test
+    script:
+        - docker pull $IMAGE
+        - docker run $IMAGE npm run test
+    except:
+        - /^release.*$/
+        - tags
+e2e_test:
+    stage: test
+    before_script:
+        - docker network create test-network
+        - docker run --name $TYPEORM_HOST -e POSTGRES_DB=$POSTGRES_DB -e
+          POSTGRES_USER=$POSTGRES_USER -e POSTGRES_PASSWORD=$POSTGRES_PASSWORD
+          -e POSTGRES_HOST_AUTH_METHOD=$POSTGRES_HOST_AUTH_METHOD
+          --network=test-network --expose 5432 -d postgres:12.2-alpine
+        - docker run --name $RMQ_HOST --network=test-network --expose 5672 -d
+          rabbitmq:3-management-alpine
+        - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD
+          $CI_REGISTRY
+    script:
+        - docker pull $IMAGE
+        - docker run -e NODE_ENV=$NODE_ENV -e PORT=$PORT -e
+          RMQ_PROTOCOL=$RMQ_PROTOCOL -e MICROSERVICE_NAME=$MICROSERVICE_NAME -e
+          MICROSERVICE_MAIN_QUEUE=$MICROSERVICE_MAIN_QUEUE -e
+          MICROSERVICE_GAME_QUEUE=$MICROSERVICE_GAME_QUEUE -e
+          MICROSERVICE_USER_QUEUE=$MICROSERVICE_USER_QUEUE -e
+          MICROSERVICE_PLAYGROUND_QUEUE=$MICROSERVICE_PLAYGROUND_QUEUE -e
+          RMQ_HOST=$RMQ_HOST -e RMQ_PORT=$RMQ_PORT -e TYPEORM_HOST=$TYPEORM_HOST
+          -e TYPEORM_CONNECTION=$TYPEORM_CONNECTION -e
+          TYPEORM_PORT=$TYPEORM_PORT -e TYPEORM_HOST=$TYPEORM_HOST -e
+          TYPEORM_USERNAME=$TYPEORM_USERNAME -e
+          TYPEORM_PASSWORD=$TYPEORM_PASSWORD -e
+          TYPEORM_DATABASE=$TYPEORM_DATABASE -e
+          TYPEORM_ENTITIES=$TYPEORM_ENTITIES -e
+          TYPEORM_SEEDING_FACTORIES=$TYPEORM_SEEDING_FACTORIES -e
+          TYPEORM_SEEDING_SEEDS=$TYPEORM_SEEDING_SEEDS -e
+          TYPEORM_MIGRATIONS=$TYPEORM_MIGRATIONS -e
+          TYPEORM_MIGRATIONS_DIR=$TYPEORM_MIGRATIONS_DIR -e
+          TYPEORM_SYNCHRONIZE=$TYPEORM_SYNCHRONIZE -e
+          AUTH_DATABASE_URL=$AUTH_DATABASE_URL -e
+          FIREBASE_CREDENTIALS_PATH=$FIREBASE_CREDENTIALS_PATH -e
+          GOOGLE_API_KEY=$GOOGLE_API_KEY -e
+          TABLE_TENNIS_PLAYGROUNDS_PATH=$TABLE_TENNIS_PLAYGROUNDS_PATH -v
+          $FIREBASE_CREDENTIALS_PATH:$FIREBASE_CREDENTIALS_PATH -v
+          $TABLE_TENNIS_PLAYGROUNDS_PATH:$TABLE_TENNIS_PLAYGROUNDS_PATH
+          --network=test-network $IMAGE npm run test:e2e
+    except:
+        - /^release.*$/
+        - tags
+test_coverage:
+    stage: test_coverage
+    script:
+        - docker pull $IMAGE
+        - docker run $IMAGE npm run test:cov
+    except:
+        - /^release.*$/
+        - tags
+tag:
+    stage: tag
+    before_script:
+        - apk add jq
+        - apk add git
+    script:
+        - export VERSION=$(jq .version package.json | cut -d'"' -f 2)
+        - git config --global user.email "${GITLAB_USER_NAME}"
+        - git config --global user.name "${GITLAB_USER_EMAIL}"
+        - git remote add job-origin
+          https://root:$ACCESS_TOKEN@$CI_SERVER_HOST/$CI_PROJECT_PATH.git
+        - >
+            if [ $(git tag -l "$VERSION") ]; then
+              echo "Version $VERSION already exists"
+            else
+              git tag -a $VERSION -m "Version $VERSION"
+              git push job-origin $VERSION
+            fi
+    only:
+        - master
+
+#tags
+build_prod:
+    stage: build
+    script:
+        - docker build --pull -t $RELEASE_IMAGE .
+        - docker push $RELEASE_IMAGE
+    only:
+        - tags
+deploy_prod:
+    stage: deploy_production
+    script:
+        #deploy
+        - echo "deploying to production"
+    environment:
+        name: production
+    only:
+        - tags
+    except:
+        - tags@playpal-services/playpal-boilerplate
+
+#release and hotfix
+deploy_develop:
+    stage: deploy_dev
+    script:
+        #deploy
+        - echo "deploying to development"
+    environment:
+        name: development
+    when: manual
+    only:
+        - /^release.*$/
+        - /^hotfix.*$/
+    except:
+        - /^release.*$/@playpal-services/playpal-boilerplate
+        - /^hotfix.*$/@playpal-services/playpal-boilerplate
+deploy_staging:
+    stage: deploy_staging
+    script:
+        #deploy
+        - echo "deploying to staging"
+    environment:
+        name: staging
+    when: manual
+    only:
+        - /^release.*$/
+        - /^hotfix.*$/
+    except:
+        - /^release.*$/@playpal-services/playpal-boilerplate
+        - /^hotfix.*$/@playpal-services/playpal-boilerplate
