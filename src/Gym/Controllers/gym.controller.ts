@@ -13,10 +13,13 @@ import { Response, Request } from 'express';
 import { HttpExceptionFilter } from '../../Exceptions/Filters/http.exception.filter';
 import { LoggerInterceptor } from '../../Interceptors/logger.interceptor';
 import { GymService } from '../Services/gym.service';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 
 @UseFilters(HttpExceptionFilter)
 @UseInterceptors(LoggerInterceptor)
-@Controller('/gym')
+@ApiTags('Gym')
+@ApiBearerAuth()
+@Controller('')
 export class GymController {
     public constructor(
         private loggerService: LoggerService,
@@ -25,8 +28,8 @@ export class GymController {
         this.loggerService.setContext(this.constructor.name);
     }
 
-    @Get('/')
-    public async getUser(
+    @Get('/gyms/all')
+    public async getAllGyms(
         @Req() req: Request,
         @Res() res: Response
     ): Promise<Response> {
@@ -35,8 +38,8 @@ export class GymController {
         return res.status(HttpStatus.OK).json(gyms);
     }
 
-    @Get('/:id')
-    public async createUser(
+    @Get('/gym/:id')
+    public async getGymByUuid(
         @Req() req: Request,
         @Res() res: Response,
         @Param('id') uuid: string

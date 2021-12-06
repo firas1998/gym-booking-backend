@@ -32,7 +32,7 @@ export class User {
     })
     gender: Gender;
 
-    @OneToMany(() => Booking, (booking) => booking.creator)
+    @OneToMany(() => Booking, (booking) => booking.creator, { eager: true })
     bookingsCreated: Booking[];
 
     @CreateDateColumn()

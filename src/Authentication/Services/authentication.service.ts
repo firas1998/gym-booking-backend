@@ -1,4 +1,4 @@
-import { HttpService, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import * as firebase from 'firebase-admin';
 import { Request } from 'express';
 
@@ -8,7 +8,7 @@ export class AuthenticationService {
      * Creates an instance of AuthenticationService.
      * @memberof AuthenticationService
      */
-    public constructor(private readonly httpService: HttpService) {
+    public constructor() {
         firebase.initializeApp({
             credential: firebase.credential.cert(
                 process.env.FIREBASE_CREDENTIALS_PATH
@@ -49,25 +49,5 @@ export class AuthenticationService {
             console.log(error);
             return null;
         }
-    }
-
-    /**
-     *
-     *
-     * @param {string} uuid
-     * @returns {Promise<string>}
-     * @memberof AuthenticationService
-     */
-    public async generateIdTokenForTesting(uuid: string): Promise<string> {
-        const url = `https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyCustomToken?key=${process.env.GOOGLE_API_KEY}`;
-        const customToken = await firebase.auth().createCustomToken(uuid);
-
-        const data = {
-            token: customToken,
-            returnSecureToken: true
-        };
-
-        const resp = await this.httpService.post(url, data).toPromise();
-        return resp.data.idToken;
     }
 }

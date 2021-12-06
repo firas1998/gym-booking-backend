@@ -1,30 +1,16 @@
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import { Transport } from '@nestjs/microservices/enums/transport.enum';
-import { MicroserviceOptions } from '@nestjs/microservices/interfaces/microservice-configuration.interface';
 import { AppModule } from './app.module';
 import { LoggerService } from './Logger/Services/logger.service';
 import * as helmet from 'helmet';
 import * as rateLimit from 'express-rate-limit';
 import { GlobalConstants } from './GlobalConstants';
-
-const microServiceOptions = {
-    transport: Transport.RMQ,
-    options: {
-        urls: [
-            `${process.env.RMQ_PROTOCOL}://${process.env.RMQ_HOST}:${process.env.RMQ_PORT}`
-        ],
-        queue: process.env.MICROSERVICE_NAME,
-        queueOptions: {
-            durable: true
-        }
-    }
-} as MicroserviceOptions;
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { NestExpressApplication } from '@nestjs/platform-express';
 
 async function bootstrap() {
-    const app = await NestFactory.create(AppModule);
-    app.connectMicroservice<MicroserviceOptions>(microServiceOptions);
-    app.useLogger(app.get(LoggerService));
+    const app = await NestFactory.create<NestExpressApplication>(AppModule);
+    app.useLogger(new LoggerService());
     app.use(helmet());
     app.use(
         rateLimit({
@@ -32,9 +18,17 @@ async function bootstrap() {
             max: 100 // limit each IP to 100 requests per windowMs
         })
     );
-    app.startAllMicroservicesAsync();
+
+    const config = new DocumentBuilder()
+        .setTitle('gym booking')
+        .setVersion('1.0')
+        .addBearerAuth()
+        .build();
+
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('api', app, document);
     app.listen(Number(process.env.PORT), () => {
-        Logger.log(`${GlobalConstants.MICROSERVICE_NAME} is listening...`);
+        Logger.log(`booking is listening...`);
     });
 }
 bootstrap();

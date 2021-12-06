@@ -1,13 +1,13 @@
-import { Injectable, Logger, Scope } from '@nestjs/common';
+import { ConsoleLogger, Injectable, Logger, Scope } from '@nestjs/common';
 import * as fs from 'fs';
 import * as moment from 'moment';
 import { GlobalConstants } from '../../GlobalConstants';
 import { LogLevel } from '../Enums/log-levels.enum';
 
 @Injectable({ scope: Scope.TRANSIENT })
-export class LoggerService extends Logger {
+export class LoggerService extends ConsoleLogger {
     private readonly fileType = 'log';
-    private readonly path = 'src/Boilerplate/Logs';
+    private readonly path = 'src/Logs';
 
     private fullPathInfoFile: string;
     private fullPathErrorFile: string;
@@ -28,6 +28,10 @@ export class LoggerService extends Logger {
         this.fullPathErrorFile = `${this.path}/${
             LogLevel.ERROR
         }-${this.getTodaysDate()}.${this.fileType}`;
+    }
+
+    public setContext(context: string) {
+        this.context = context;
     }
 
     /**

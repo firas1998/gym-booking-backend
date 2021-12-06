@@ -2,17 +2,18 @@ import {
     Injectable,
     CanActivate,
     ExecutionContext,
-    Inject
+    HttpException,
+    HttpStatus
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { Request } from 'express';
-import { AuthenticationService } from '../Services/authentication.service';
+import { AuthorizationService } from '../Services/authorization.service';
+import { GlobalConstants } from 'src/GlobalConstants';
 
 @Injectable()
-export class AuthenticationGuard implements CanActivate {
+export class BookingAuthorizationGuard implements CanActivate {
     public constructor(
-        //@Inject('AuthenticationService')
-        private readonly authenticationService: AuthenticationService
+        private readonly authorizationService: AuthorizationService,
     ) {}
 
     /**
@@ -38,6 +39,18 @@ export class AuthenticationGuard implements CanActivate {
      * @memberof AuthGuard
      */
     private async validateRequest(request: Request): Promise<boolean> {
-        return this.authenticationService.verifyToken(request);
+        const bookingUUID = request.params.bookingId || request.body.bookingId;
+        const userUuid = request.header(GlobalConstants.USER_HEADER);
+
+        const isUserBookingCreator = await this.authorizationService.isUserBookingreator(
+            bookingUUID,
+            userUuid
+        );
+
+        if (!isUserBookingCreator) {
+            throw new HttpException('This is not yours', HttpStatus.FORBIDDEN);
+        }
+
+        return isUserBookingCreator;
     }
 }

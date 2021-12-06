@@ -8,7 +8,7 @@ import {
     PrimaryGeneratedColumn,
     UpdateDateColumn
 } from 'typeorm';
-import { Gym } from 'src/Gym/Entites/gym.entity';
+import { Gym } from 'src/Gym/Entities/gym.entity';
 
 @Entity({ name: 'bookings' })
 export class Booking {
@@ -20,7 +20,6 @@ export class Booking {
     uuid: string;
 
     @ManyToOne(() => User, (user) => user.bookingsCreated, {
-        eager: true,
         cascade: true,
         nullable: false
     })

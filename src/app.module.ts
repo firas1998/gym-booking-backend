@@ -8,15 +8,19 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { UserModule } from './User/Modules/user.module';
 import { GymModule } from './Gym/Modules/gym.module';
+import { BookingModule } from './Booking/Modules/booking.module';
+import { AuthorizationModule } from './Authorization/Modules/authorization.module';
 
 @Module({
     imports: [
         ConfigModule.forRoot({ envFilePath: `${process.env.NODE_ENV}.env` }),
         TypeOrmModule.forRoot(),
+        AuthorizationModule,
         GuardModule,
         LoggerModule,
         UserModule,
-        GymModule
+        GymModule,
+        BookingModule
     ],
     controllers: [AppController],
     providers: [AppService]

@@ -1,14 +1,14 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Gym } from '../Entites/gym.entity';
+import { Gym } from '../Entities/gym.entity';
 
 @Injectable()
 export class GymService {
     public constructor(
         @InjectRepository(Gym)
         private readonly gymRepository: Repository<Gym>
-    ) {}
+    ) { }
 
     /**
      *
@@ -48,6 +48,6 @@ export class GymService {
      * @memberof UserService
      */
     private async getGymByUuid(uuid: string): Promise<Gym> {
-        return this.gymRepository.findOne({ uuid: uuid });
+        return this.gymRepository.findOne({ uuid: uuid }, { relations: ['bookings'] });
     }
 }

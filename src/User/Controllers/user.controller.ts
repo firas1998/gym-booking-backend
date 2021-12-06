@@ -20,9 +20,12 @@ import { ValidationPipe } from '../../Pipes/validation.pipe';
 import { PipeType } from '../../Pipes/Enums/type.enum';
 import { GlobalConstants } from '../../GlobalConstants';
 import { LoggerInterceptor } from '../../Interceptors/logger.interceptor';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 
 @UseFilters(HttpExceptionFilter)
 @UseInterceptors(LoggerInterceptor)
+@ApiTags('User')
+@ApiBearerAuth()
 @Controller('/user')
 export class UserController {
     public constructor(
