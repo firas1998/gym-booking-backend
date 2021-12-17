@@ -64,7 +64,7 @@ export class BookingService {
         const gym = await this.gymService.getGym(bookingDTO.gymId);
 
         const activeVisitors = await this.getNumberOfVisitorsDuringDateAndTime(gym, bookingDTO.datetime);
-
+        console.log(activeVisitors);
         if (activeVisitors >= gym.maxVisitors) {
             throw new HttpException('Max number of visitors is reached during this time', HttpStatus.BAD_REQUEST);
         }
@@ -123,28 +123,23 @@ export class BookingService {
 
     public async getNumberOfVisitorsDuringDateAndTime(gym: Gym, datetime: string): Promise<number> {
         const bookingTime = moment(
-            moment(
-                datetime,
-                GlobalConstants.DATE_TIME_FORMAT
-            ).format(GlobalConstants.DATE_TIME_FORMAT),
-            GlobalConstants.DATE_TIME_FORMAT,
-            true
+            datetime,
+            GlobalConstants.DATE_TIME_FORMAT
         );
-        const hourBeforeBooking = moment(
-            bookingTime
-                .subtract(1, 'hours')
-                .format(GlobalConstants.DATE_TIME_FORMAT),
-            GlobalConstants.DATE_TIME_FORMAT,
-            true
-        );
+        const bookingTimeString = moment(
+            datetime,
+            GlobalConstants.DATE_TIME_FORMAT
+        ).toString();
+        const hourBeforeBookingString = bookingTime
+            .subtract(1, 'hour').toString();
         const bookings = await this.bookingRepository.find({
-            time: Between(hourBeforeBooking.toString(), bookingTime.toString()),
+            time: Between(hourBeforeBookingString, bookingTimeString),
             gym: gym
         });
 
         return bookings.length;
     }
-    
+
     /**
      *
      *

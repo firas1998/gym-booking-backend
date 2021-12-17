@@ -9,7 +9,7 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { NestExpressApplication } from '@nestjs/platform-express';
 
 async function bootstrap() {
-    const app = await NestFactory.create<NestExpressApplication>(AppModule);
+    const app = await NestFactory.create<NestExpressApplication>(AppModule, { cors: true });
     app.useLogger(new LoggerService());
     app.use(helmet());
     app.use(
@@ -27,6 +27,7 @@ async function bootstrap() {
 
     const document = SwaggerModule.createDocument(app, config);
     SwaggerModule.setup('api', app, document);
+    app.enableCors();
     app.listen(Number(process.env.PORT), () => {
         Logger.log(`booking is listening...`);
     });
