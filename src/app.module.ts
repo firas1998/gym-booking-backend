@@ -10,9 +10,14 @@ import { UserModule } from './User/Modules/user.module';
 import { GymModule } from './Gym/Modules/gym.module';
 import { BookingModule } from './Booking/Modules/booking.module';
 import { AuthorizationModule } from './Authorization/Modules/authorization.module';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { join } from 'path';
 
 @Module({
     imports: [
+        ServeStaticModule.forRoot({
+            rootPath: join(__dirname, '../..', 'public/dist')
+        }),
         ConfigModule.forRoot({ envFilePath: `${process.env.NODE_ENV}.env` }),
         TypeOrmModule.forRoot(),
         AuthorizationModule,

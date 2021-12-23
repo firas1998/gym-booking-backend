@@ -11,7 +11,6 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 async function bootstrap() {
     const app = await NestFactory.create<NestExpressApplication>(AppModule, { cors: true });
     app.useLogger(new LoggerService());
-    app.use(helmet());
     app.use(
         rateLimit({
             windowMs: 15 * 60 * 1000, // 15 minutes
@@ -26,8 +25,9 @@ async function bootstrap() {
         .build();
 
     const document = SwaggerModule.createDocument(app, config);
-    SwaggerModule.setup('api', app, document);
+    SwaggerModule.setup('docs', app, document);
     app.enableCors();
+    app.setGlobalPrefix('api');
     app.listen(Number(process.env.PORT), () => {
         Logger.log(`booking is listening...`);
     });

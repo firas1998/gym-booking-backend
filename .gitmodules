@@ -1,0 +1,3 @@
+[submodule "public"]
+	path = public
+	url = https://gitlab.com/b1304/gym-booking-ui.git
