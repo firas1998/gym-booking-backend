@@ -19,7 +19,16 @@ import { join } from 'path';
             rootPath: join(__dirname, '../..', 'public/dist')
         }),
         ConfigModule.forRoot({ envFilePath: `${process.env.NODE_ENV}.env` }),
-        TypeOrmModule.forRoot(),
+        TypeOrmModule.forRoot({
+            type: 'postgres',
+            url: process.env.DATABASE_URL,
+            entities: [process.env.TYPEORM_ENTITIES],
+            synchronize: true,
+            ssl:
+                process.env.NODE_ENV === 'production'
+                    ? { rejectUnauthorized: false }
+                    : false
+        }),
         AuthorizationModule,
         GuardModule,
         LoggerModule,
